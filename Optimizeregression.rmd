@@ -1,0 +1,112 @@
+---
+title: "RegressionOptimization"
+output: html_document
+---
+```{r}
+#Load Libraries
+library('ggplot2')
+library('quantmod')
+library('GA')
+library('GenSA')
+
+```
+
+Create a dataset with with 20 X, Y values.
+```{r}
+x = c(4,6,9,13,16,20,24,28,35,39,43,49,53,54,59,65,79,78, 82,88)
+y = c(104,128,149,172,191,224,273,299,321,398,441,491,555,583,621,653,697,729,788,821)
+v = matrix(c(x,y), nrow = 20, ncol = 2)
+colnames (v) = c('x', 'y')
+v
+
+```
+
+Plotting (x,y) values
+```{r}
+plot(x,y)
+
+```
+
+Use GA and SA to search for optimal b0 and b1 estimates. The objective should be to minimize  SSE (sums of square error).
+```{r}
+fun = function(x,y) { (sin(10*x)*cos(10*y)+2)/sqrt(x^4+y^4+1) }
+
+rf <- function (b0,b1) {
+  sum(y - (b0 + b1*x))^2
+}
+rfobj <- function(k) {
+  rf(k[1],k[2])
+}
+
+```
+Using GenSA
+```{r}
+
+set.seed(1234)
+fn.call <<- 0
+out.GenSA <- GenSA(fn = rfobj, lower = rep(0, 2), upper = rep(10, 2), control = list(smooth = FALSE, max.call = 3000))
+fn.call.GenSA <- fn.call
+out.GenSA$value
+out.GenSA$counts
+
+```
+
+```{r}
+par <- c(62, 6)
+SAr <- GenSA(par=par,fn = function(r) rf(r[1], r[2]), lower = c(60,5), upper = c(65,9))
+SAr[c("value","par","counts")]
+```
+```{r}
+df <- data.frame(x,y)
+plot(x,y,col="red",xlab="x-label",ylab="y-label",main="Simulated Annealing",pch=10)
+abline(64.761956, 8.699954,col="green")
+```
+
+Using GA
+```{r}
+gap <- ga(type = "real-valued", fitness=function(r) - rf(r[1], r[2]), lower=c(60,5), upper=c(66,10), popSize = 50)
+summary(gap)
+plot(gap)
+```
+
+```{r}
+model=lm(y~x)
+summary(model)
+
+obj1<- function(b0,b1) {
+  sum(y-(b0+b1*x))^2
+}
+```
+```{r}
+df <- data.frame(x,y)
+plot(x,y,col="red",xlab="x-label",ylab="y-label",main="Genetic algorithm",pch=10)
+abline(64.36, 8.7095,col="green")
+```
+
+Plot for Regression
+```{r}
+X=seq(0,100,length=50)
+Y=seq(100,900,length=50) 
+z=outer(X,Y,fun) 
+ persp3D(X, Y, z, phi = 0, theta = 45,
+  xlab = "X", ylab = "Y",
+  main = "Optimal Parameters for Regression",
+  color.palette = spectral.colors
+)
+filled.contour(X, Y, z, color.palette = spectral.colors)
+```
+
+Optimal Regression line
+```{r}
+plot(x,y,xlim = c(0, 100), ylim = c(100, 900), xlab="x-value", ylab="y-value", col="blue")
+abline(lsfit(x, y),col = "green")
+```
+
+```{r}
+df = data.frame(x,y)
+p <- ggplot(data=df, ) + geom_point(mapping= aes(x,y)) 
+p1 <- p + (geom_abline(aes(slope= 8.699954, intercept = 64.761956, colour = "Simulated Annealing")))
+p2 <- p1 + (geom_abline(aes(slope= 8.7095, intercept = 64.36, colour = "Linear Regression")))
+p3 <- p2 + (geom_abline(aes(slope= 8.727063 , intercept = 63.61811 ,colour = "Genetic Algorithm"))) + scale_color_manual("", values = c("Genetic Algorithm" = "black", "Simulated Annealing" = "red", "Linear Regression" = "blue")) + ggtitle("Metaheuristic Plots")
+p3
+```
